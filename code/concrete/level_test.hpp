@@ -55,6 +55,7 @@ private:
 
 
 	int m_num_keys, m_rows, m_cols;
+	int m_keys_to_process;
 	KeyData m_keys[MAX_NUM_KEYS];
 
 	KeyState m_state;

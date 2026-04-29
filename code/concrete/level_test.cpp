@@ -20,7 +20,7 @@ void MainMenuLevel::Quit()
 
 void MainMenuLevel::load()
 {
-
+	m_keys_to_process = 0;
 	if(-1 == SDL_CaptureMouse(SDL_TRUE))
 		printf("global mouse tracking not supported\n");
 	
@@ -263,13 +263,18 @@ void MainMenuLevel::input(const SDL_Event& c_event, bool& quit)
 			}
 
 			// dirty method identify hardware scancodes
+			if(0 != m_keys_to_process) // stops processing when all keys are bound
+			{
+
 			for(int i = 0; i < m_num_keys; ++i)
 				if(m_keys[i].sdlKey == c_event.key.keysym.sym)
 				{
 					UpdateKeyState(&m_state);
 					m_keys[i].vKey = FindCurrentKeyPress(&m_state);
 					m_keys[i].sdlKey = SDL_SCANCODE_UNKNOWN;
+					m_keys_to_process--;
 				}
+			}
 		}
 		break;
 	case SDL_MOUSEMOTION:
@@ -348,6 +353,7 @@ void MainMenuLevel::ReadKeyConfig()
 		fclose(conf_file);
 	}
 	int real_count = 0;
+	m_keys_to_process = 0;
 	for(int i=0;i<count;++i)
 	{
 		int row = i / m_cols;
@@ -365,6 +371,8 @@ void MainMenuLevel::ReadKeyConfig()
 		
 		if(actual_physicalkeys[i] != 0)
 			actual_sdlkeys[i] = SDL_SCANCODE_UNKNOWN;
+		else
+			m_keys_to_process++;
 		m_keys[real_count++] = {
 		actual_sdlkeys[i], 
 		actual_physicalkeys[i],
@@ -381,7 +389,7 @@ void MainMenuLevel::ReadKeyConfig()
 
 void MainMenuLevel::SaveKeyConfig()
 {
-
+#ifdef _DEBUG // only override files in debug mode
 	FILE* conf_file = _fopen("KeyConfig", "wb");
 	if(NULL != conf_file)
 	{
@@ -399,4 +407,5 @@ void MainMenuLevel::SaveKeyConfig()
 		}
 		fclose(conf_file);
 	}
+#endif
 }
