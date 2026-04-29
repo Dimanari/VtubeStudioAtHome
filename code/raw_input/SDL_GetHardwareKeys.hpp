@@ -1,11 +1,11 @@
 #pragma once
 #include <base/includes.hpp>
+#define NUM_BITFIELD 32 // 256 bits bitfield
 #ifndef _WIN32
 #include <X11/Xlib.h>
 
 // Add -lX11 to linker on linux
 
-#define NUM_BITFIELD 32
 struct KeyState
 {
 	Display* display;
@@ -20,7 +20,7 @@ void GetKeyStateLinux(KeyState* state);
 struct KeyState
 {
 	char* garbage1;
-	char garbage2[32]; // for alignment
+	unsigned char bitfield[NUM_BITFIELD * CHAR_BIT]; // for alignment
 	glm::ivec2 mouse_pos;
 	// might include stuff later if needed for OS features
 };
@@ -30,6 +30,7 @@ struct KeyState
 void InitKeyState(KeyState* keys, SDL_Window* window);
 // call before check
 void UpdateKeyState(KeyState* keys);
+int FindCurrentKeyPress(KeyState* keys);
 // actually get results
 short GetKeyFromState(int vKey, KeyState* keystate);
 glm::ivec2 GetMousePosFromState(KeyState* keystate);

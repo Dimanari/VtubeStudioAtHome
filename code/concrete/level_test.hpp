@@ -5,7 +5,7 @@
 #include <sprite_manager/sprite_holder.hpp>
 #include <base/level.hpp>
 
-#define MAX_NUM_KEYS 10
+#define MAX_NUM_KEYS (NUM_BITFIELD*CHAR_BIT)
 
 void QuitMainMenu(void* level);
 
@@ -30,6 +30,9 @@ public:
 	glm::ivec2 TranslateKeyLocation(glm::vec2 relative);
 	glm::ivec2 TranslateKeySize(glm::vec2 relative);
 
+	void ReadKeyConfig();
+	void SaveKeyConfig();
+
 	void Quit();
 private:
 	bool* m_quit;
@@ -50,8 +53,9 @@ private:
 	Texture m_texture_body;
 	SpriteManager m_vertex_body;
 
-	KeyState m_state;
 
-	int m_num_keys;
+	int m_num_keys, m_rows, m_cols;
 	KeyData m_keys[MAX_NUM_KEYS];
+
+	KeyState m_state;
 };

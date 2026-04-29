@@ -72,6 +72,7 @@ void UpdateKeyState(KeyState* keys)
 #else
 	POINT mouse;
 	GetCursorPos(&mouse);
+	GetKeyboardState((PBYTE)keys->bitfield);
 
 	// printf("pos: %d, %d \n", (int)mouse.x, (int)mouse.y);
 	keys->mouse_pos.x = mouse.x;
@@ -79,15 +80,57 @@ void UpdateKeyState(KeyState* keys)
 #endif
 }
 
+int FindCurrentKeyPress(KeyState* keys)
+{
+	int found_byte = -1;
+	// search key
+#ifdef _WIN32
+	for(int i=0;i<NUM_BITFIELD * CHAR_BIT;++i)
+	{
+		if(keys->bitfield[i])
+		{
+			found_byte = i;
+			break;
+		}
+	}
+	return found_byte;
+#else
+	int found_bit = -1;
+	for(int i=0;i<NUM_BITFIELD;++i)
+	{
+		if(keys->bitfield[i])
+		{
+			found_byte = i;
+			break;
+		}
+	}
+
+	if(-1 == found_byte) return 0;
+
+	for(int i=0;i<CHAR_BIT;++i)
+	{
+		if(keys->bitfield[found_byte] & (1 << i))
+		{
+			found_bit = i;
+			break;
+		}
+	}
+	if(-1 == found_bit) return 0;
+
+	return found_byte * CHAR_BIT + found_bit;
+#endif
+
+
+}
+
 short GetKeyFromState(int vKey, KeyState* keystate)
 {
-#ifndef _WIN32
+#ifdef _WIN32
+	return keystate->bitfield[vKey] & 0x80;
+#else
 	int vbyte = vKey / 8;
 	int vbit = vKey % 8;
 	return keystate->bitfield[vbyte] & (1 << vbit);
-#else
-	UNUSED(keystate);
-	return GetAsyncKeyState(vKey);
 #endif
 }
 

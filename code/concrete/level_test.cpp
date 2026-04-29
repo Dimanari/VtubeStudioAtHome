@@ -176,44 +176,7 @@ void MainMenuLevel::load()
 	<DOWN> = 116;
 	<RGHT> = 114;
 */
-
-	int vkeys[set_keys] = {SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT};
-	int hkeys[set_keys] = 
-#ifdef _WIN32
-	{VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT};
-#else
-	{0};
-
-	FILE* conf_file = _fopen("KeyConfig", "rb");
-	if(NULL != conf_file)
-	{
-		fread(hkeys, sizeof(int), set_keys, conf_file);
-		fclose(conf_file);
-	}
-#endif
-	
-	int rows = 2;
-	int cols = ceil(float(set_keys)/rows);
-	m_num_keys = 0;
-	for(int i=0;i<set_keys;++i)
-	{
-		int row = i / cols;
-		int col = i % cols;
-		PrimitiveVert2D vert_elem;
-		vert_elem.color_RGBA = COLOR_BLACK;
-		vert_elem.pos = TranslateKeyLocation({ (1.f/cols) * col, (1.f/rows) * row});
-		vert_elem.size = TranslateKeySize({ (1.f/cols), (1.f/rows)});
-		vert_elem.shape = PRIMITIVE_RECT;
-
-		int handle_for_key = m_vertex_keys.AddElement(vert_elem);
-
-		if(hkeys[i] != 0)
-			vkeys[i] = SDL_SCANCODE_UNKNOWN;
-		m_keys[m_num_keys++] = {
-		vkeys[i], 
-		hkeys[i],
-		handle_for_key};
-	}
+	ReadKeyConfig();
 }
 void MainMenuLevel::unload()
 {
@@ -241,6 +204,15 @@ void MainMenuLevel::update(bool& quit)
 {
 	UpdateKeyState(&m_state);
 	for(int i = 0; i < m_num_keys; ++i)
+	{
+		if(0 == m_keys[i].vKey) continue;
+		if(0 > m_keys[i].gHandle || m_vertex_keys.NumData() <= m_keys[i].gHandle)
+		{
+			printf("num keys %d\n", m_num_keys);
+			printf("invalid key %d\n", i);
+			continue;
+		}
+		
 		if(GetKeyFromState(m_keys[i].vKey,&m_state))
 		{
 			m_vertex_keys.GetDataAtRaw(m_keys[i].gHandle).color_RGBA = COLOR_GREEN;
@@ -249,6 +221,7 @@ void MainMenuLevel::update(bool& quit)
 		{
 			m_vertex_keys.GetDataAtRaw(m_keys[i].gHandle).color_RGBA = COLOR_BLUE;
 		}
+	}
 
 	// GLOBAL MOUSE POSITION
 	SDL_DisplayMode DM;
@@ -286,59 +259,17 @@ void MainMenuLevel::input(const SDL_Event& c_event, bool& quit)
 			if(c_event.key.keysym.sym == SDLK_ESCAPE)
 			{
 				quit = true;
-
-				int hkeys[set_keys] = {0};
-
-				for(int i=0;i<set_keys;++i)
-				{
-					hkeys[i] = m_keys[i].vKey;
-				}
-
-				FILE* conf_file = _fopen("KeyConfig", "wb");
-
-				if(NULL != conf_file)
-				{
-					fwrite(hkeys, sizeof(int), set_keys, conf_file);
-					fclose(conf_file);
-				}
+				SaveKeyConfig();
 			}
 
 			// dirty method identify hardware scancodes
-			#ifndef _WIN32
 			for(int i = 0; i < m_num_keys; ++i)
-				if(m_keys[i].sdlKey == c_event.key.keysym.scancode)
+				if(m_keys[i].sdlKey == c_event.key.keysym.sym)
 				{
-
 					UpdateKeyState(&m_state);
-
-					int found_byte = -1;
-					int found_bit = -1;
-					// search key
-					for(int i=0;i<NUM_BITFIELD;++i)
-					{
-						if(m_state.bitfield[i])
-						{
-							found_byte = i;
-							break;
-						}
-					}
-
-					if(-1 == found_byte) break;
-
-					for(int i=0;i<CHAR_BIT;++i)
-					{
-						if(m_state.bitfield[found_byte] & (1 << i))
-						{
-							found_bit = i;
-							break;
-						}
-					}
-					if(-1 == found_bit) break;
-
-					m_keys[i].vKey = 8 * found_byte + found_bit;
+					m_keys[i].vKey = FindCurrentKeyPress(&m_state);
 					m_keys[i].sdlKey = SDL_SCANCODE_UNKNOWN;
 				}
-			#endif
 		}
 		break;
 	case SDL_MOUSEMOTION:
@@ -385,4 +316,87 @@ glm::ivec2 MainMenuLevel::TranslateKeySize(glm::vec2 relative)
 {
 	glm::vec2 size = {95, 50};
 	return glm::ivec2{size * relative};
+}
+
+void MainMenuLevel::ReadKeyConfig()
+{
+	int vkeys[set_keys] = { SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT }; //SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT};
+	int hkeys[set_keys] = {0};
+
+	int* actual_sdlkeys = vkeys;
+	int* actual_physicalkeys = hkeys;
+
+	m_rows = 2;
+	m_cols = ceil(float(set_keys)/m_rows);
+	bool wasMalloc = false;
+
+	FILE* conf_file = _fopen("KeyConfig", "rb");
+	int count = set_keys;
+	if(NULL != conf_file)
+	{
+		fread(&count, sizeof(int), 1, conf_file);
+		fread(&m_rows, sizeof(int), 1, conf_file);
+		fread(&m_cols, sizeof(int), 1, conf_file);
+
+		actual_sdlkeys = (int*)SDL_malloc(sizeof(int) * count);
+		actual_physicalkeys = (int*)SDL_malloc(sizeof(int) * count);
+
+		wasMalloc = true;
+
+		fread(actual_sdlkeys, sizeof(int), count, conf_file);
+		fread(actual_physicalkeys, sizeof(int), count, conf_file);
+		fclose(conf_file);
+	}
+	int real_count = 0;
+	for(int i=0;i<count;++i)
+	{
+		int row = i / m_cols;
+		int col = i % m_cols;
+		PrimitiveVert2D vert_elem;
+		vert_elem.color_RGBA = COLOR_BLUE;
+		vert_elem.pos = TranslateKeyLocation({ (1.f/m_cols) * col, (1.f/m_rows) * row});
+		vert_elem.size = TranslateKeySize({ (1.f/m_cols), (1.f/m_rows)});
+		vert_elem.shape = PRIMITIVE_RECT;
+
+		int handle_for_key = m_vertex_keys.AddElement(vert_elem);
+
+		if((actual_physicalkeys[i] == 0) && (actual_sdlkeys[i] == SDL_SCANCODE_UNKNOWN))
+			continue;
+		
+		if(actual_physicalkeys[i] != 0)
+			actual_sdlkeys[i] = SDL_SCANCODE_UNKNOWN;
+		m_keys[real_count++] = {
+		actual_sdlkeys[i], 
+		actual_physicalkeys[i],
+		handle_for_key};
+	}
+
+	if(wasMalloc)
+	{
+		SDL_free(actual_sdlkeys);
+		SDL_free(actual_physicalkeys);
+	}
+	m_num_keys = real_count;
+}
+
+void MainMenuLevel::SaveKeyConfig()
+{
+
+	FILE* conf_file = _fopen("KeyConfig", "wb");
+	if(NULL != conf_file)
+	{
+		fwrite(&m_num_keys, sizeof(int), 1, conf_file);
+		fwrite(&m_rows, sizeof(int), 1, conf_file);
+		fwrite(&m_cols, sizeof(int), 1, conf_file);
+
+		for(int i = 0; i < m_num_keys; ++i)
+		{
+			fwrite(&m_keys[i].sdlKey, sizeof(int), 1, conf_file);
+		}
+		for(int i = 0; i < m_num_keys; ++i)
+		{
+			fwrite(&m_keys[i].vKey, sizeof(int), 1, conf_file);
+		}
+		fclose(conf_file);
+	}
 }
