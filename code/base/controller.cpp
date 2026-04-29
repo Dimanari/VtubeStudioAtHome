@@ -32,11 +32,11 @@ Controller::CONT_STATES_e Controller::Init(const int SCREEN_WIDTH, const int SCR
         return CONT_SDL_INIT;
     }
     //Initialize SDL_ttf
-    if (TTF_Init() == -1)
-    {
-        printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
-        return CONT_SDL_INIT;
-    }
+    // if (TTF_Init() == -1)
+    // {
+    //     printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+    //     return CONT_SDL_INIT;
+    // }
 
     /*
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
@@ -189,8 +189,8 @@ void Controller::cleanup()
     gContext = NULL;
 
     //Quit SDL subsystems
-    Mix_Quit();
-    TTF_Quit();
+    //Mix_Quit();
+    //TTF_Quit();
     IMG_Quit();
     SDL_Quit();
 }

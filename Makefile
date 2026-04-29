@@ -18,9 +18,9 @@ RELEASE = -DNDEBUG -O3
 DEBUG = -D_DEBUG -g
 
 # included libraries
-libs = `sdl2-config --libs` -lSDL2_image -lSDL2_ttf -lSDL2_mixer -lGL -lGLU -lGLEW -lX11
+libs = `sdl2-config --libs` -lSDL2_image -lGL -lGLU -lGLEW -lX11
 libs_win = -L $(HDD)Coding/OpenGL/glew-2.2.0/lib/x64/ -L"$(HDD)Coding/SDL 2/SDL2-2.0.14/lib/x64/" \
-	-lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer -lopengl32 -lglu32 -lglew32
+	-lSDL2main -lSDL2 -lSDL2_image -lopengl32 -lglu32 -lglew32
 
 # header libraries are a shared dependancy
 
